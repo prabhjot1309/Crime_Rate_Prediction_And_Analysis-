@@ -1,1 +1,10 @@
-# Crime_Rate_Prediction_And_Analysis-
+---
+title: Crime Rate App
+emoji: 👀
+colorFrom: red
+colorTo: green
+sdk: docker
+pinned: false
+---
+
+Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
