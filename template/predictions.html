@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crime Rate Prediction</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+</head>
+<body class="bg-gradient-to-b from-indigo-50 to-gray-100 min-h-screen p-5">
+    <nav>
+        <ul class="flex space-x-4">
+            <li><a href="/predictions" class="hover:text-indigo-300">Predictions</a></li>
+        </ul>
+    </nav>
+
+    <div class="mt-5">
+        <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden md:max-w-2xl p-6">
+            <h1 class="text-3xl font-bold text-indigo-800 mb-4">Crime Rate Prediction</h1>
+            <p class="text-gray-600 mb-6">Enter a future year to predict crime rate percentage change</p>
+            <form id="predictionForm" class="space-y-4">
+                <div>
+                    <label for="yearInput" class="block text-sm font-medium text-gray-700 mb-1">Future Year</label>
+                    <input type="number" id="yearInput" placeholder="2025" min="2023" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out">
+                    Calculate Prediction
+                </button>
+            </form>
+        </div>
+        <div id="result" class="mt-4"></div>
+    </div>
+
+    <script>
+        document.getElementById('predictionForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const year = parseInt(document.getElementById('yearInput').value);
+            const currentYear = new Date().getFullYear();
+            const yearsDiff = year - currentYear;
+            const prediction = makePrediction(year, yearsDiff);
+            const resultHTML = `
+            <div class="mt-6 bg-indigo-50 border border-indigo-100 rounded-lg p-6">
+                <div class="text-center">
+                    <span class="inline-block px-3 py-1 rounded-full text-sm font-semibold text-indigo-800 bg-indigo-200 mb-4">
+                        Prediction Result
+                    </span>
+                    <h3 class="text-xl font-bold text-indigo-900">${prediction}</h3>
+                    <div class="mt-4 space-y-2 text-sm text-gray-600">
+                        <div class="flex justify-between">
+                            <span>Current Year:</span>
+                            <span class="font-medium">${currentYear}</span>
+                        </div>
+                        <div class="flex justify-between border-t border-gray-200 pt-2">
+                            <span>Prediction Period:</span>
+                            <span class="font-medium">${yearsDiff} years</span>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+            document.getElementById('result').innerHTML = resultHTML;
+        });
+
+        function makePrediction(year, yearsDiff) {
+            const baseRate = 500; // Example base rate per 100k population
+            
+            // Simple linear growth model (replace with real calculation)
+            const percentageChange = yearsDiff * 5; // 5% annual change
+            
+            const changeWord = percentageChange >= 0 ? 'Increase' : 'Decrease';
+            const changeColor = percentageChange >= 0 ? 'text-red-600' : 'text-green-600';
+            return `
+                <span>Projected crime rate for ${year}:</span>
+                <span class="${changeColor} font-bold">${changeWord} of ${Math.abs(percentageChange)}%</span>
+                compared to current levels`;
+        }
+    </script>
+</body>
+</html>

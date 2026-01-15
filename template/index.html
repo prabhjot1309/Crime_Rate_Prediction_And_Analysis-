@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrimeWatch Analytics | Predictive Crime Rate Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+        }
+        
+        .card-shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .heatmap {
+            background: linear-gradient(to right, #f0fdf4, #bbf7d0, #4ade80, #22c55e, #15803d);
+            height: 8px;
+            border-radius: 4px;
+        }
+        
+        .crime-timeline::before {
+            content: '';
+            position: absolute;
+            left: 28px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #e2e8f0;
+        }
+        
+        .hover-scale:hover {
+            transform: scale(1.02);
+            transition: transform 0.2s ease;
+        }
+      /* Dark Mode Styles */
+.dark-mode .bg-indigo-50 {
+  background-color: #1e3a8a !important;
+  color: #c7d2fe !important;
+}
+.dark-mode .bg-red-50 {
+  background-color: #7f1d1d !important;
+  color: #fecaca !important;
+}
+.dark-mode .bg-green-50 {
+  background-color: #14532d !important;
+  color: #bbf7d0 !important;
+}
+.dark-mode .text-indigo-700 {
+  color: #c7d2fe !important;
+}
+.dark-mode .text-red-700 {
+  color: #fecaca !important;
+}
+.dark-mode .text-green-700 {
+  color: #bbf7d0 !important;
+}
+      .dark-mode {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+.dark-mode a {
+  color: #cbd5e1;
+}
+.dark-mode .card-shadow {
+  background-color: #1e293b;
+  color: #f8fafc;
+}
+.dark-mode input,
+.dark-mode select {
+  background-color: #1e293b;
+  color: #f8fafc;
+  border-color: #334155;
+}
+    </style>
+</head>
+<body class="min-h-screen">
+    <header class="gradient-bg text-white">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 rounded-full bg-indigo-500 flex items-center justify-center mr-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold">CrimeWatch <span class="text-indigo-300">Analytics</span></h1>
+                </div>
+                <nav>
+                    <ul class="flex space-x-6">
+                        <li><a href="/" class="hover:text-indigo-300">Dashboard</a></li>
+                        <li><a href="/predictions" class="hover:text-indigo-300">Predictions</a></li>
+                        <li><a href="/reports" class="hover:text-indigo-300">Reports</a></li>
+                        <li><a href="/data" class="hover:text-indigo-300">Data</a></li>
+                        <li><a href="/about" class="hover:text-indigo-300">About</a></li>
+                        <button onclick="toggleDarkMode()" id="themeToggleBtn" class="ml-4 px-3 py-1 bg-white text-black rounded text-xs flex items-center space-x-2">
+                            <span id="themeIcon">🌙</span>
+                            <span>Toggle Theme</span>
+                        </button>
+                        <button onclick="downloadPDF()" class="ml-2 text-sm bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Download PDF</button>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+    <main class="container mx-auto px-4 py-8">
+    <h2 class="text-2xl font-bold mb-4">Welcome to CrimeWatch Analytics</h2>    
+  </main>
+
+    <main class="container mx-auto px-4 py-8">
+        <!-- Crime Risk Calculator -->
+        <div class="bg-white rounded-lg card-shadow p-6 mb-8 hover-scale">
+            <h2 class="text-xl font-semibold mb-4">Crime Risk Calculator</h2>
+            <form id="riskCalculator">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Crime Type</label>
+                        <select id="crimeTypeSelect" class="w-full rounded-md border-gray-300 shadow-sm" onchange="updateVisualizations()">
+                            
+                            <option>MURDER</option>
+                            <option>ATTEMPT TO MURDER</option>
+                            <option>CULPABLE HOMICIDE NOT AMOUNTING TO MURDER</option>
+                            <option>RAPE</option>
+                            <option>CUSTODIAL RAPE</option>
+                            <option>OTHER RAPE</option>
+                            <option>KIDNAPPING & ABDUCTION</option>
+                            <option>KIDNAPPING AND ABDUCTION OF WOMEN AND GIRLS</option>
+                            <option>KIDNAPPING AND ABDUCTION OF OTHERS</option>
+                            <option>DACOITY</option>
+                            <option>PREPARATION AND ASSEMBLY FOR DACOITY</option>
+                            <option>ROBBERY</option>
+                            <option>BURGLARY</option>
+                            <option>AUTO THEFT</option>
+                            <option>RIOTS</option>
+                            <option>Violent Crime</option>
+                            <option>Property Crime</option>
+                            <option>Cyber Crime</option>
+                            <option>Fraud</option>
+                            <option>CRIMINAL BREACH OF TRUST</option>
+                            <option>CHEATING</option>
+                            <option>COUNTERFEITING</option>
+                            <option>ARSON</option>
+                            <option>HURT/GRIEVOUS HURT</option>
+                            <option>DOWRY DEATHS</option>
+                            <option>ASSAULT ON WOMEN WITH INTENT TO OUTRAGE HER MODESTY</option>
+                            <option>INSULT TO MODESTY OF WOMEN</option>
+                            <option>CRUELTY BY HUSBAND OR HIS RELATIVES</option>
+                            <option>IMPORTATION OF GIRLS FROM FOREIGN COUNTRIES</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                        <input type="text" id="locationInput" class="w-full rounded-md border-gray-300 shadow-sm" placeholder="Enter PIN code or city name" list="suggestedAreas">
+                        <datalist id="suggestedAreas">
+                             <datalist id="locationList">
+      <option value="160017 - Chandigarh"></option>
+      <option value="110001 - New Delhi"></option>
+      <option value="400001 - Mumbai"></option>
+      <option value="560001 - Bangalore"></option>
+      <option value="600001 - Chennai"></option>
+      <option value="700001 - Kolkata"></option>
+      <option value="500001 - Hyderabad"></option>
+      <option value="380001 - Ahmedabad"></option>
+      <option value="395003 - Surat"></option>
+      <option value="411001 - Pune"></option>
+      <option value="302001 - Jaipur"></option>
+      <option value="226001 - Lucknow"></option>
+      <option value="208001 - Kanpur"></option>
+      <option value="440001 - Nagpur"></option>
+      <option value="452001 - Indore"></option>
+      <option value="641001 - Coimbatore"></option>
+      <option value="682001 - Kochi"></option>
+      <option value="673001 - Kozhikode"></option>
+      <option value="201001 - Ghaziabad"></option>
+      <option value="800001 - Patna"></option>
+      <option value="530001 - Visakhapatnam"></option>
+      <option value="390001 - Vadodara"></option>
+      <option value="282001 - Agra"></option>
+      <option value="422001 - Nashik"></option>
+      <option value="121001 - Faridabad"></option>
+      <option value="250001 - Meerut"></option>
+      <option value="360001 - Rajkot"></option>
+      <option value="143001 - Amritsar"></option>
+      <option value="211001 - Prayagraj"></option>
+      <option value="520001 - Vijayawada"></option>
+      <option value="342001 - Jodhpur"></option>
+      <option value="625001 - Madurai"></option>
+      <option value="474001 - Gwalior"></option>
+      <option value="421001 - Thane"></option>
+      <option value="413001 - Solapur"></option>
+      <option value="826001 - Dhanbad"></option>
+      <option value="190001 - Srinagar"></option>
+      <option value="834001 - Ranchi"></option>
+      <option value="751001 - Bhubaneswar"></option>
+                        </datalist>
+                    </div>
+                    <div>
+                        <label for="yearSelect" class="block text-sm font-medium text-gray-700 mb-2">Time Period (Year)</label>
+    <select id="yearSelect" class="w-full md:w-64 rounded-md border-gray-300 shadow-sm mb-8">
+      <script>
+        for (let year = 2000; year <= 2025; year++) {
+          document.write(`<option value="${year}">${year}</option>`);
+        }
+      </script>
+    </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button type="button" id="calculateBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                            Calculate Risk
+                        </button>
+                    </div>
+                </div>
+            </form>
+            <div id="riskResult" class="hidden mt-6 p-4 border rounded-md border-indigo-200 bg-indigo-50">
+                <h3 class="font-medium text-indigo-700">Risk Assessment</h3>
+                <p id="riskPercentage" class="text-2xl font-bold my-2"></p>
+                <p id="riskDetails" class="text-sm"></p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-lg card-shadow p-6 hover-scale">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">Crime Heatmap Visualization</h2>
+                        <div class="flex space-x-2">
+                            <button class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md text-sm">City</button>
+                            <button class="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm">Region</button>
+                            <button class="px-3 py-1 bg-gray-100 text-gray-700 rounded-md text-sm">Country</button>
+                        </div>
+                    </div>
+                    <div class="relative h-96 rounded-lg overflow-hidden" id="crimeHeatmap">
+                        <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/24fc19a3-2fee-42ec-9588-b164a2483147.png" alt="Interactive India crime heat map showing crime hotspots across major cities" class="w-full h-full object-cover" />
+                        <div class="absolute inset-0 flex flex-wrap" id="heatmapZones">
+                            <div class="h-1/4 hover:bg-red-500 opacity-20 cursor-pointer hover:opacity-40 transition" data-risk="85" style="width: 85%;"></div>
+                            <div class="h-1/4 hover:bg-yellow-500 opacity-20 cursor-pointer hover:opacity-40 transition" data-risk="60" style="width: 60%;"></div>
+                            <div class="h-1/4 hover:bg-yellow-500 opacity-20 cursor-pointer hover:opacity-40 transition" data-risk="55" style="width: 55%;"></div>
+                            <div class="h-1/4 hover:bg-green-500 opacity-20 cursor-pointer hover:opacity-40 transition" data-risk="30" style="width: 30%;"></div>
+                        </div>
+                        <div class="absolute bottom-4 left-4 bg-white p-2 rounded-md shadow-md">
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 bg-red-500 rounded-sm mr-2"></div>
+                                <span class="text-xs">High Crime</span>
+                            </div>
+                            <div class="flex items-center mt-1">
+                                <div class="w-4 h-4 bg-yellow-400 rounded-sm mr-2"></div>
+                                <span class="text-xs">Medium</span>
+                            </div>
+                            <div class="flex items-center mt-1">
+                                <div class="w-4 h-4 bg-green-400 rounded-sm mr-2"></div>
+                                <span class="text-xs">Low</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="space-y-8">
+                <div class="bg-white rounded-lg card-shadow p-6 hover-scale">
+                    <h3 class="font-semibold text-gray-700 mb-4">Risk Assessment Summary</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>Violent Crimes</span>
+                                <span class="font-medium">High</span>
+                            </div>
+                            <div class="heatmap" style="width: 100%;"></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>Property Crimes</span>
+                                <span class="font-medium">Medium</span>
+                            </div>
+                            <div class="heatmap" style="width: 65%;"></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>Cyber Crimes</span>
+                                <span class="font-medium">Low</span>
+                            </div>
+                            <div class="heatmap" style="width: 30%;"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg card-shadow p-6 hover-scale">
+                    <h3 class="font-semibold text-gray-700 mb-4">Prediction Accuracy</h3>
+                    <div class="flex justify-between items-center">
+                        <div class="text-4xl font-bold text-indigo-600">87<span class="text-xl text-indigo-400">%</span></div>
+                        <div class="text-sm text-gray-500">Current Model</div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div class="h-full bg-indigo-500" style="width: 87%;"></div>
+                        </div>
+                        <div class="flex justify-between text-xs mt-1 text-gray-500">
+                            <span>Last Week: 85%</span>
+                            <span>+2% Improvement</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="bg-white rounded-lg card-shadow p-6 hover-scale">
+                <h2 class="text-xl font-semibold mb-4">Crime Rate Trends</h2>
+                <canvas id="trendChart" height="300"></canvas>
+            </div>
+            
+            <div class="bg-white rounded-lg card-shadow p-6 hover-scale">
+                <h2 class="text-xl font-semibold mb-4">Crime Type Distribution</h2>
+                <canvas id="typeChart" height="300"></canvas>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="bg-white rounded-lg card-shadow p-6 hover-scale lg:col-span-2">
+                <h2 class="text-xl font-semibold mb-4">Recent Crime Timeline</h2>
+                <div class="crime-timeline space-y-6 relative pl-12">
+                    <div class="relative">
+                        <div class="absolute left-0 w-6 h-6 rounded-full bg-indigo-500 border-4 border-indigo-100 flex items-center justify-center"></div>
+                        <div class="ml-8">
+                            <div class="flex justify-between">
+                                <span class="font-medium">Burglary Reported</span>
+                                <span class="text-sm text-gray-500">2 hours ago</span>
+                            </div>
+                            <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Commercial property in Mumbai CBD. Estimated loss: ₹4 lakh</p>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <div class="absolute left-0 w-6 h-6 rounded-full bg-red-500 border-4 border-red-100 flex items-center justify-center"></div>
+                        <div class="ml-8">
+                            <div class="flex justify-between">
+                                <span class="font-medium">Assault Incident</span>
+                                <span class="text-sm text-gray-500">1 day ago</span>
+                            </div>
+                            <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">South Delhi area. Suspect apprehended by authorities.</p>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <div class="absolute left-0 w-6 h-6 rounded-full bg-yellow-500 border-4 border-yellow-100 flex items-center justify-center"></div>
+                        <div class="ml-8">
+                            <div class="flex justify-between">
+                                <span class="font-medium">Fraud Alert</span>
+                                <span class="text-sm text-gray-500">3 days ago</span>
+                            </div>
+                            <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Multiple reports of UPI fraud cases in Bangalore</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg card-shadow p-6 hover-scale">
+                <h2 class="text-xl font-semibold mb-4">Predictive Insights</h2>
+                <div class="space-y-4">
+                    <div class="p-4 bg-indigo-50 rounded-md">
+                        <div class="flex items-center mb-2">
+                            <div class="mr-2 w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                            </div>
+                            <span class="font-medium text-indigo-700">Tomorrow's Risk</span>
+                        </div>
+                        <p class="text-sm">Expected 15% increase in nighttime burglaries due to upcoming festival season.</p>
+                    </div>
+                    
+                    <div class="p-4 bg-red-50 rounded-md">
+                        <div class="flex items-center mb-2">
+                            <div class="mr-2 w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <span class="font-medium text-red-700">High Alert</span>
+                        </div>
+                        <p class="text-sm">Commercial districts showing vulnerabilities for cyber fraud next week with 82% confidence.</p>
+                    </div>
+                    
+                    <div class="p-4 bg-green-50 rounded-md">
+                        <div class="flex items-center mb-2">
+                            <div class="mr-2 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <span class="font-medium text-green-700">Improving Areas</span>
+                        </div>
+                        <p class="text-sm">Northwest residential zones show 40% decrease prediction in property crimes after police patrol increases.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Initialize trend chart
+        const trendCtx = document.getElementById('trendChart').getContext('2d');
+        const trendChart = new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+                datasets: [
+                    {
+                        label: 'Violent Crimes',
+                        data: [45, 52, 48, 60, 55, 50, 42],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Property Crimes',
+                        data: [65, 60, 55, 70, 75, 68, 62],
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Cyber Crimes',
+                        data: [20, 22, 25, 30, 35, 38, 40],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Reported Incidents'
+                        }
+                    }
+                }
+            }
+        });
+        // Initialize type chart
+        const typeCtx = document.getElementById('typeChart').getContext('2d');
+        const typeChart = new Chart(typeCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Assault', 'Burglary', 'Theft', 'Fraud', 'Vandalism'],
+                datasets: [{
+                    data: [25, 35, 20, 15, 5],
+                    backgroundColor: [
+                        '#ef4444',
+                        '#f59e0b',
+                        '#3b82f6',
+                        '#8b5cf6',
+                        '#10b981'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.label}: ${context.raw}%`;
+                            }
+                        }
+                    }
+                },
+                cutout: '70%'
+            }
+        });
+        // Risk calculation functionality
+        document.getElementById('calculateBtn').addEventListener('click', function() {
+            const crimeType = document.querySelector('#riskCalculator select').value;
+            const location = document.querySelector('#riskCalculator input').value;
+            
+            // Simulate risk calculation (in a real app this would call an API)
+            let riskPercentage = Math.floor(Math.random() * 30) + 40;
+            if (crimeType.includes('Violent')) riskPercentage += 15;
+            if (crimeType.includes('Property')) riskPercentage += 5;
+            
+            document.getElementById('riskPercentage').textContent = `${riskPercentage}% Risk`;
+            document.getElementById('riskDetails').textContent = 
+                `Area: ${location || 'Unknown'} | Crime Type: ${crimeType}`;
+            document.getElementById('riskResult').classList.remove('hidden');
+        });
+        // Heatmap interaction
+        document.querySelectorAll('#heatmapZones > div').forEach(zone => {
+            zone.addEventListener('click', function() {
+                const riskPercentage = this.getAttribute('data-risk');
+                alert(`Selected area has ${riskPercentage}% crime risk rating`);
+            });
+        });
+        // Data for different crime types
+        const crimeData = {
+            'Violent Crime': { 
+                trend: [45,52,48,60,55,50,42,60,65,70,68,62],
+                type: [40,20,10,20,10],
+                heatmap: [90,75,60,30]
+            },
+            'Property Crime': {
+                trend: [65,60,55,70,75,68,62,70,75,80,78,72],
+                type: [15,45,25,10,5],
+                heatmap: [70,65,50,20]
+            },
+            'Cyber Crime': {
+                trend: [20,22,25,30,35,38,40,45,50,55,52,48],
+                type: [10,15,40,30,5],
+                heatmap: [40,50,65,30]
+            }
+        };
+        function updateVisualizations() {
+            const crimeType = document.getElementById('crimeTypeSelect').value;
+            const data = crimeData[crimeType] || crimeData['Violent Crime'];
+            
+            // Update trend chart
+            trendChart.data.datasets[0].data = data.trend;
+            trendChart.update();
+            
+            // Update type chart
+            typeChart.data.datasets[0].data = data.type;
+            typeChart.update();
+            
+            // Update heatmap
+            const zones = document.querySelectorAll('#heatmapZones > div');
+            zones.forEach((zone, i) => {
+                zone.setAttribute('data-risk', data.heatmap[i]);
+                zone.style.width = `${data.heatmap[i]}%`;
+            });
+            
+            // Update risk assessment
+            document.getElementById('riskPercentage').textContent = 
+                `${Math.max(...data.heatmap)}% Max Risk Area`;
+        }
+        // Initialize visualizations
+        updateVisualizations();
+        // Chart tooltip functionality
+        trendChart.options.onHover = (event, chartElement) => {
+            if (chartElement[0]) {
+                document.getElementById('crimeHeatmap').querySelector('img').style.filter = 
+                    chartElement[0].element.options.borderColor === '#ef4444' ? 
+                    'sepia(50%) saturate(200%) hue-rotate(-20deg)' : 'none';
+            }
+        };
+    </script>
+  <footer class="text-center py-4 text-sm text-gray-500">&copy; 2025 CrimeWatch Analytics. All rights reserved.</footer>
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.dataset.theme = savedTheme;
+    const themeIcon = document.getElementById('themeIcon');
+    const body = document.body;
+    function applyTheme(theme) {
+      localStorage.setItem('theme', theme);
+      document.documentElement.dataset.theme = theme;
+      if (theme === 'dark') {
+        body.classList.add('dark-mode');
+        body.classList.remove('bg-gray-50', 'text-gray-900');
+        themeIcon.textContent = '🌞';
+      } else {
+        body.classList.remove('dark-mode');
+        body.classList.add('bg-gray-50', 'text-gray-900');
+        themeIcon.textContent = '🌙';
+      }
+    }
+    applyTheme(savedTheme);
+    window.toggleDarkMode = function () {
+      const newTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      applyTheme(newTheme);
+    };
+  });
+</script>
+</body>
+</html>
