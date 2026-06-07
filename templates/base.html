@@ -145,8 +145,16 @@
   </div>
 </nav>
 {% block content %}{% endblock %}
-<!-- Chart.js loaded sync before page scripts -->
+<!-- Chart.js with fallback CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  // If jsdelivr failed, try unpkg
+  if (typeof Chart === 'undefined') {
+    var s = document.createElement('script');
+    s.src = 'https://unpkg.com/chart.js@4.4.0/dist/chart.umd.min.js';
+    document.head.appendChild(s);
+  }
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
