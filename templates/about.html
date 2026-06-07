@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}About — CrimeWatch Analytics{% endblock %}
+
+{% block content %}
+<div class="page" style="max-width:800px;">
+  <h1 style="font-size:1.5rem; font-weight:700; margin-bottom:.25rem;">
+    ℹ️ About <span style="color:var(--accent);">This Project</span>
+  </h1>
+  <p style="color:var(--muted); margin-bottom:2rem; font-size:.9rem;">
+    Architecture, data sources, and model details
+  </p>
+
+  <!-- STATS -->
+  <div class="grid-3" style="margin-bottom:1.5rem;">
+    <div class="stat-card">
+      <div class="stat-val">{{ total_records }}</div>
+      <div class="stat-label">Total Records</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color:var(--success);">28+8</div>
+      <div class="stat-label">States + Union Territories</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color:#a78bfa;">{{ crime_types }}</div>
+      <div class="stat-label">Crime Categories</div>
+    </div>
+  </div>
+
+  <!-- TECH STACK -->
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="section-title">🛠️ Tech <span>Stack</span></div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:1rem;">
+      {% for item in [
+        ('Backend', 'Python 3.10 · Flask 2.x'),
+        ('ML Model', 'XGBoost Regressor (n_estimators=200)'),
+        ('Data Processing', 'Pandas · NumPy · Scikit-learn'),
+        ('PDF Generation', 'ReportLab'),
+        ('Frontend', 'Vanilla JS · Chart.js 4 · Google Fonts'),
+        ('Dataset', 'NCRB India Crime Statistics 2001–2013'),
+        ('Model Accuracy', 'R² = {{ model_r2 }}% · MAE = {{ model_mae }}'),
+        ('Deployment', 'Docker · Hugging Face Spaces'),
+      ] %}
+      <div style="padding:.75rem; background:var(--surface2); border-radius:8px; border:1px solid var(--border);">
+        <div style="font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:.3rem;">{{ item[0] }}</div>
+        <div style="font-size:.9rem; font-weight:500;">{{ item[1] }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="section-title">⚙️ How It <span>Works</span></div>
+    <div style="margin-top:1rem; display:flex; flex-direction:column; gap:.75rem;">
+      {% for step in [
+        ('1. Data Ingestion', 'Raw CSV from NCRB is loaded, cleaned (state/district uppercase, remove TOTAL rows), and melted from wide to long format.'),
+        ('2. Feature Engineering', 'Year, State, District, and Crime Type are encoded. LabelEncoders map text categories to integers.'),
+        ('3. XGBoost Training', 'XGBRegressor with 200 trees, max_depth=6, learning_rate=0.1 is trained to predict crime COUNT for any combination of inputs.'),
+        ('4. Real Forecasting', 'For future years (2014–2030), the same trained model extrapolates — historical patterns drive projections.'),
+        ('5. AI Summary', 'Rule-based analysis compares predicted count, detects trend direction from forecast, and identifies high-risk states.'),
+        ('6. PDF Export', 'ReportLab generates a structured A4 PDF with parameters, predictions, forecast table, and AI summary.'),
+      ] %}
+      <div style="display:flex; gap:1rem; align-items:flex-start;">
+        <div style="background:var(--accent); color:#fff; border-radius:6px; padding:.25rem .6rem; font-size:.75rem; font-weight:700; white-space:nowrap;">{{ step[0] }}</div>
+        <div style="font-size:.875rem; color:var(--muted); line-height:1.6;">{{ step[1] }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- LIMITATIONS -->
+  <div class="alert alert-warning">
+    <strong>⚠️ Important Limitations</strong><br>
+    Data only covers 2001–2013 (NCRB public dataset). Forecasts beyond 2013 are model extrapolations — 
+    not real reported crime rates. The model has R²={{ model_r2 }}%, meaning predictions carry uncertainty. 
+    Use for educational and academic purposes only.
+  </div>
+</div>
+{% endblock %}
