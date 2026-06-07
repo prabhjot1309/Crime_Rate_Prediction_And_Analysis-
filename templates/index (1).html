@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — CrimeWatch Analytics{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  <!-- HERO STATS -->
+  <div style="margin-bottom:1.5rem;">
+    <h1 style="font-size:1.6rem; font-weight:700; margin-bottom:.25rem;">
+      India Crime Analytics Dashboard
+      <span class="badge badge-blue" style="font-size:.7rem; vertical-align:middle; margin-left:.5rem;">NCRB 2001–2013</span>
+    </h1>
+    <p style="color:var(--muted); font-size:.9rem;">Powered by XGBoost · 9,839 records · 29 crime categories · 37 states/UTs</p>
+  </div>
+
+  <div class="grid-4" style="margin-bottom:1.5rem;">
+    <div class="stat-card">
+      <div class="stat-val">{{ total_crimes }}</div>
+      <div class="stat-label">Total IPC Crimes (2001–13)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color:var(--success);">{{ model_r2 }}%</div>
+      <div class="stat-label">XGBoost R² Score</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color:var(--accent2);">{{ model_mae }}</div>
+      <div class="stat-label">Mean Absolute Error</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color:#a78bfa;">29</div>
+      <div class="stat-label">Crime Categories</div>
+    </div>
+  </div>
+
+  <!-- QUICK PREDICT PANEL -->
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="section-title">⚡ Quick <span>Risk Calculator</span></div>
+    <div class="grid-4" style="align-items:flex-end;">
+      <div>
+        <label>State / UT</label>
+        <select id="q_state" onchange="loadDistricts('q_state','q_district')">
+          <option value="">— Select State —</option>
+          {% for s in states %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>District</label>
+        <select id="q_district"><option value="">— Select District —</option></select>
+      </div>
+      <div>
+        <label>Crime Type</label>
+        <select id="q_crime">
+          {% for c in crime_cols %}<option>{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Year</label>
+        <select id="q_year">
+          {% for y in years %}<option {% if y==2013 %}selected{% endif %}>{{ y }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:1rem;">
+      <button class="btn btn-primary" onclick="quickPredict()">
+        🔍 Calculate Risk
+      </button>
+    </div>
+    <div id="quick_result" style="display:none; margin-top:1.2rem;"></div>
+  </div>
+
+  <!-- CHARTS ROW -->
+  <div class="grid-2" style="margin-bottom:1.5rem;">
+    <div class="card">
+      <div class="section-title">📈 National Crime <span>Trend</span></div>
+      <canvas id="trendChart" height="220"></canvas>
+    </div>
+    <div class="card">
+      <div class="section-title">🥧 Top Crime <span>Types</span></div>
+      <canvas id="crimeChart" height="220"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">🏆 Top 10 States by <span>Total IPC Crimes</span></div>
+    <canvas id="stateChart" height="120"></canvas>
+  </div>
+
+</div>
+
+<script>
+const yearTrend  = {{ year_trend|safe }};
+const topCrimes  = {{ top_crimes|safe }};
+const stateData  = {{ state_data|safe }};
+
+// Trend chart
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: yearTrend.years,
+    datasets: [{
+      label: 'Total IPC Crimes',
+      data: yearTrend.totals,
+      borderColor: '#3b82f6',
+      backgroundColor: 'rgba(59,130,246,.1)',
+      fill: true, tension: .35, pointRadius: 4,
+    }]
+  },
+  options: {
+    plugins: { legend: { labels: { color: '#94a3b8', font:{size:12} }}},
+    scales: {
+      x: { ticks: { color: '#64748b' }, grid: { color: '#1e2a3a' }},
+      y: { ticks: { color: '#64748b' }, grid: { color: '#1e2a3a' }},
+    }
+  }
+});
+
+// Donut chart
+new Chart(document.getElementById('crimeChart'), {
+  type: 'doughnut',
+  data: {
+    labels: topCrimes.map(c => c.crime.length > 20 ? c.crime.slice(0,20)+'…' : c.crime),
+    datasets: [{ data: topCrimes.map(c => c.count),
+      backgroundColor: ['#3b82f6','#f59e0b','#ef4444','#10b981','#8b5cf6',
+                        '#06b6d4','#f97316','#ec4899','#a3e635','#14b8a6'],
+      borderWidth: 0, hoverOffset: 8 }]
+  },
+  options: {
+    cutout: '65%',
+    plugins: { legend: { position:'right', labels:{ color:'#94a3b8', font:{size:11}, boxWidth:12 }}}
+  }
+});
+
+// State bar chart
+new Chart(document.getElementById('stateChart'), {
+  type: 'bar',
+  data: {
+    labels: stateData.states,
+    datasets: [{ label: 'Total IPC Crimes', data: stateData.totals,
+      backgroundColor: 'rgba(59,130,246,.7)', borderRadius: 4 }]
+  },
+  options: {
+    plugins: { legend: { display:false }},
+    scales: {
+      x: { ticks: { color: '#64748b', maxRotation:45, font:{size:10} }, grid:{ color:'#1e2a3a' }},
+      y: { ticks: { color: '#64748b' }, grid: { color: '#1e2a3a' }},
+    }
+  }
+});
+
+// District loader
+function loadDistricts(stateId, districtId) {
+  const state = document.getElementById(stateId).value;
+  if (!state) return;
+  fetch(`/get_districts?state=${encodeURIComponent(state)}`)
+    .then(r => r.json()).then(districts => {
+      const sel = document.getElementById(districtId);
+      sel.innerHTML = '<option value="">— Select District —</option>';
+      districts.forEach(d => {
+        const o = document.createElement('option'); o.value = d; o.textContent = d; sel.appendChild(o);
+      });
+    });
+}
+
+async function quickPredict() {
+  const state  = document.getElementById('q_state').value;
+  const dist   = document.getElementById('q_district').value;
+  const crime  = document.getElementById('q_crime').value;
+  const year   = document.getElementById('q_year').value;
+  if (!state || !dist) { alert('Please select State and District.'); return; }
+
+  const res = await fetch('/predict', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ state, district: dist, crime_type: crime, year })
+  });
+  const d = await res.json();
+  const colorMap = { red:'badge-red', orange:'badge-orange', yellow:'badge-yellow', green:'badge-green', gray:'badge-gray' };
+  const box = document.getElementById('quick_result');
+  box.style.display = 'block';
+  box.innerHTML = `
+    <div style="display:flex; gap:1.5rem; align-items:flex-start; flex-wrap:wrap;">
+      <div class="card card-sm" style="min-width:200px;">
+        <div style="font-size:.8rem; color:var(--muted); margin-bottom:.5rem;">PREDICTED CASES (${year})</div>
+        <div style="font-size:2.5rem; font-weight:700; font-family:var(--mono); color:var(--accent);">${d.count ?? 'N/A'}</div>
+        <div class="badge ${colorMap[d.color] || 'badge-gray'}" style="margin-top:.5rem;">${d.label} Risk</div>
+      </div>
+      <div class="card card-sm" style="flex:1; min-width:280px;">
+        <div style="font-size:.8rem; color:var(--muted); margin-bottom:.5rem;">AI ANALYSIS SUMMARY</div>
+        <pre style="font-family:var(--font); font-size:.82rem; white-space:pre-wrap; line-height:1.6; color:var(--text);">${d.summary}</pre>
+      </div>
+      <div style="text-align:center; margin-top:.5rem;">
+        <a href="/predictions" class="btn btn-secondary">Full Forecast →</a>
+      </div>
+    </div>
+  `;
+}
+</script>
+{% endblock %}

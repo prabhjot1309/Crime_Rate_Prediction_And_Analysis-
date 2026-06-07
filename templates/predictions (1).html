@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Predict — CrimeWatch Analytics{% endblock %}
+
+{% block extra_head %}
+<style>
+  .forecast-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:.75rem; margin-top:1rem; }
+  .fc-cell { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:.75rem; text-align:center; }
+  .fc-cell .yr { font-size:.72rem; color:var(--muted); }
+  .fc-cell .val { font-size:1.1rem; font-weight:700; font-family:var(--mono); color:var(--accent); margin-top:.2rem; }
+  #result-panel { display:none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <h1 style="font-size:1.5rem; font-weight:700; margin-bottom:.25rem;">
+    🔮 Crime <span style="color:var(--accent);">Prediction</span> Engine
+  </h1>
+  <p style="color:var(--muted); margin-bottom:1.5rem; font-size:.9rem;">
+    XGBoost model · Real forecast to 2030 · AI-written summary · PDF export
+  </p>
+
+  <!-- INPUT FORM -->
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="section-title" style="margin-bottom:1.2rem;">Configure Prediction</div>
+    <div class="grid-2" style="gap:1rem; margin-bottom:1rem;">
+      <div>
+        <label>State / UT</label>
+        <select id="p_state" onchange="loadDistricts('p_state','p_district')">
+          <option value="">— Select State —</option>
+          {% for s in states %}<option>{{ s }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>District</label>
+        <select id="p_district"><option value="">— Select District —</option></select>
+      </div>
+      <div>
+        <label>Crime Category</label>
+        <select id="p_crime">
+          {% for c in crime_cols %}<option>{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Reference Year</label>
+        <select id="p_year">
+          {% for y in years %}<option {% if y==2013 %}selected{% endif %}>{{ y }}</option>{% endfor %}
+          {% for y in range(2014, 2031) %}<option>{{ y }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="predict_btn" onclick="runPredict()">
+      🚀 Run Prediction + Forecast
+    </button>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="result-panel">
+
+    <!-- RESULT HEADER -->
+    <div class="grid-3" style="margin-bottom:1.5rem;" id="result_stats"></div>
+
+    <!-- CHARTS -->
+    <div class="grid-2" style="margin-bottom:1.5rem;">
+      <div class="card">
+        <div class="section-title">📊 Historical vs <span>Forecast</span></div>
+        <canvas id="forecastChart" height="260"></canvas>
+      </div>
+      <div class="card">
+        <div class="section-title">🤖 AI <span>Analysis Summary</span></div>
+        <pre id="ai_summary" style="font-family:var(--font); font-size:.875rem; white-space:pre-wrap; line-height:1.7; color:var(--text);"></pre>
+        <div style="margin-top:1rem; display:flex; gap:.75rem; flex-wrap:wrap;">
+          <button class="btn btn-secondary" onclick="downloadPDF()">📄 Download PDF Report</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FORECAST GRID -->
+    <div class="card">
+      <div class="section-title">📅 Year-by-Year <span>Forecast (2026–2030)</span></div>
+      <div class="forecast-grid" id="forecast_grid"></div>
+    </div>
+
+  </div><!-- /result-panel -->
+</div>
+
+<script>
+let lastPayload = {};
+let fcChart = null;
+
+function loadDistricts(stateId, distId) {
+  const state = document.getElementById(stateId).value;
+  if (!state) return;
+  fetch(`/get_districts?state=${encodeURIComponent(state)}`)
+    .then(r => r.json()).then(districts => {
+      const sel = document.getElementById(distId);
+      sel.innerHTML = '<option value="">— Select District —</option>';
+      districts.forEach(d => {
+        const o = document.createElement('option'); o.value=d; o.textContent=d; sel.appendChild(o);
+      });
+    });
+}
+
+async function runPredict() {
+  const state  = document.getElementById('p_state').value;
+  const dist   = document.getElementById('p_district').value;
+  const crime  = document.getElementById('p_crime').value;
+  const year   = parseInt(document.getElementById('p_year').value);
+  if (!state || !dist) { alert('Select State and District first.'); return; }
+
+  const btn = document.getElementById('predict_btn');
+  btn.innerHTML = '<span class="loader"></span> Predicting…';
+  btn.disabled = true;
+
+  const res = await fetch('/predict', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ state, district:dist, crime_type:crime, year })
+  });
+  const d = await res.json();
+
+  lastPayload = { state, district:dist, crime_type:crime, year };
+
+  btn.innerHTML = '🚀 Run Prediction + Forecast';
+  btn.disabled = false;
+
+  showResults(d, year, crime, state, dist);
+}
+
+function showResults(d, year, crime, state, dist) {
+  document.getElementById('result-panel').style.display = 'block';
+
+  const colorMap = { red:'badge-red', orange:'badge-orange', yellow:'badge-yellow', green:'badge-green', gray:'badge-gray' };
+
+  // Stats row
+  document.getElementById('result_stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-val" style="color:${d.color==='red'?'var(--danger)':d.color==='green'?'var(--success)':'var(--accent2)'};">${d.count ?? 'N/A'}</div>
+      <div class="stat-label">Predicted Cases (${year})</div>
+    </div>
+    <div class="stat-card">
+      <div style="margin-bottom:.5rem;"><span class="badge ${colorMap[d.color]||'badge-gray'}" style="font-size:1rem; padding:.4rem .9rem;">${d.label} Risk</span></div>
+      <div class="stat-label">${dist}, ${state}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="font-size:1.1rem; color:var(--muted);">${crime.length>25 ? crime.slice(0,25)+'…' : crime}</div>
+      <div class="stat-label">Crime Category</div>
+    </div>
+  `;
+
+  // AI Summary
+  document.getElementById('ai_summary').textContent = d.summary;
+
+  // Build combined historical + forecast chart
+  const hist = d.historical || {};
+  const fc   = d.forecast   || {};
+  const histYears = Object.keys(hist).map(Number).sort();
+  const fcYears   = Object.keys(fc).map(Number).sort();
+
+  if (fcChart) fcChart.destroy();
+  fcChart = new Chart(document.getElementById('forecastChart'), {
+    type: 'line',
+    data: {
+      labels: [...histYears, ...fcYears],
+      datasets: [
+        {
+          label: 'Historical (Actual)',
+          data: [...histYears.map(y => hist[y]), ...fcYears.map(() => null)],
+          borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.1)',
+          fill:true, tension:.3, pointRadius:4,
+        },
+        {
+          label: 'XGBoost Forecast',
+          data: [...histYears.map(() => null), ...fcYears.map(y => fc[y])],
+          borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,.1)',
+          borderDash: [5,4], fill:true, tension:.3, pointRadius:4,
+        }
+      ]
+    },
+    options: {
+      plugins: { legend: { labels: { color:'#94a3b8', font:{size:12}}}},
+      scales: {
+        x: { ticks:{ color:'#64748b', maxRotation:45 }, grid:{ color:'#1e2a3a' }},
+        y: { ticks:{ color:'#64748b' }, grid:{ color:'#1e2a3a' }, beginAtZero:true }
+      }
+    }
+  });
+
+  // Forecast grid (2026–2030)
+  const grid = document.getElementById('forecast_grid');
+  grid.innerHTML = '';
+  for (let yr = 2026; yr <= 2030; yr++) {
+    const val = fc[yr] ?? '—';
+    grid.innerHTML += `
+      <div class="fc-cell">
+        <div class="yr">${yr}</div>
+        <div class="val">${typeof val === 'number' ? val.toFixed(0) : val}</div>
+      </div>`;
+  }
+
+  // Scroll to results
+  document.getElementById('result-panel').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+async function downloadPDF() {
+  if (!lastPayload.state) { alert('Run a prediction first.'); return; }
+  const res = await fetch('/download_pdf', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(lastPayload)
+  });
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download=`crime_report_${lastPayload.state}_${lastPayload.year}.pdf`;
+  a.click(); URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}
