@@ -82,6 +82,7 @@ function showResults(d, year, crime, state, dist) {
   const histYears = Object.keys(hist).map(Number).sort();
   const fcYears   = Object.keys(fc).map(Number).sort();
 
+  if (typeof Chart === 'undefined') { setTimeout(()=>showResults(d,year,crime,state,dist),150); return; }
   if (fcChart) fcChart.destroy();
   fcChart = new Chart(document.getElementById('forecastChart'), {
     type: 'line',
@@ -294,6 +295,7 @@ function showResults(d, year, crime, state, dist) {
   const histYears = Object.keys(hist).map(Number).sort();
   const fcYears   = Object.keys(fc).map(Number).sort();
 
+  if (typeof Chart === 'undefined') { setTimeout(()=>showResults(d,year,crime,state,dist),150); return; }
   if (fcChart) fcChart.destroy();
   fcChart = new Chart(document.getElementById('forecastChart'), {
     type: 'line',
