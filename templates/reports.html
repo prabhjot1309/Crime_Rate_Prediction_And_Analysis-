@@ -89,6 +89,8 @@
   </div>
 </div>
 
+
+{% block scripts %}
 <script>
 const yearTrend = {{ year_trend|safe }};
 const stateData = {{ state_data|safe }};
@@ -149,4 +151,5 @@ new Chart(document.getElementById('crimeChart'), {
   }
 });
 </script>
+{% endblock %}
 {% endblock %}
