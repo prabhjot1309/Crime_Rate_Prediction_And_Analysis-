@@ -44,8 +44,12 @@
       <div>
         <label>Reference Year</label>
         <select id="p_year">
-          {% for y in years %}<option {% if y==2013 %}selected{% endif %}>{{ y }}</option>{% endfor %}
-          {% for y in range(2014, 2031) %}<option>{{ y }}</option>{% endfor %}
+          <optgroup label="── Historical Data ──">
+            {% for y in range(2001, 2014) %}<option {% if y==2013 %}selected{% endif %}>{{ y }}</option>{% endfor %}
+          </optgroup>
+          <optgroup label="── Forecast Years ──">
+            {% for y in range(2014, 2031) %}<option>{{ y }}</option>{% endfor %}
+          </optgroup>
         </select>
       </div>
     </div>
