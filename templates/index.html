@@ -99,6 +99,13 @@ const yearTrend  = {{ year_trend|safe }};
 const topCrimes  = {{ top_crimes|safe }};
 const stateData  = {{ state_data|safe }};
 
+// Wait for Chart.js then render all charts
+function renderCharts() {
+  if (typeof Chart === 'undefined') {
+    setTimeout(renderCharts, 100);
+    return;
+  }
+
 // Trend chart
 new Chart(document.getElementById('trendChart'), {
   type: 'line',
@@ -153,6 +160,9 @@ new Chart(document.getElementById('stateChart'), {
     }
   }
 });
+
+} // end renderCharts
+renderCharts();
 
 // District loader
 function loadDistricts(stateId, districtId) {
