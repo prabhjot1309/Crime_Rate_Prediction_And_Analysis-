@@ -10,7 +10,7 @@
       India Crime Analytics Dashboard
       <span class="badge badge-blue" style="font-size:.7rem; vertical-align:middle; margin-left:.5rem;">NCRB 2001–2013</span>
     </h1>
-    <p style="color:var(--muted); font-size:.9rem;">Powered by XGBoost · 9,839 records · 29 crime categories · 37 states/UTs</p>
+    <p style="color:var(--muted); font-size:.9rem;">Powered by XGBoost · 9,839 records · 29 crime categories · 28 States + 8 UTs</p>
   </div>
 
   <div class="grid-4" style="margin-bottom:1.5rem;">
@@ -54,9 +54,14 @@
         </select>
       </div>
       <div>
-        <label>Year</label>
+        <label>Year (Historical + Forecast)</label>
         <select id="q_year">
-          {% for y in years %}<option {% if y==2013 %}selected{% endif %}>{{ y }}</option>{% endfor %}
+          <optgroup label="── Historical Data ──">
+            {% for y in range(2001, 2014) %}<option {% if y==2013 %}selected{% endif %}>{{ y }}</option>{% endfor %}
+          </optgroup>
+          <optgroup label="── Forecast Years ──">
+            {% for y in range(2014, 2031) %}<option>{{ y }}</option>{% endfor %}
+          </optgroup>
         </select>
       </div>
     </div>
