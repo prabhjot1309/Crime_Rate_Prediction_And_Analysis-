@@ -75,9 +75,9 @@ def forecast_series(state, district, crime_type, from_year=2014, to_year=2030):
 def risk_label(count):
     if count is None: return "Unknown", "gray"
     if count == 0:    return "None",    "green"
-    if count < 50:    return "Low",     "green"
-    if count < 200:   return "Medium",  "yellow"
-    if count < 500:   return "High",    "orange"
+    if count <= 35:   return "Low",     "green"
+    if count <= 65:   return "Medium",  "yellow"
+    if count <= 150:  return "High",    "orange"
     return "Very High", "red"
 
 def generate_ai_summary(state, district, crime_type, year, count, forecast):
@@ -132,33 +132,53 @@ def get_districts():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    data       = request.json
-    year       = int(data['year'])
-    state      = data['state'].upper().strip()
-    district   = data['district'].upper().strip()
-    crime_type = data['crime_type']
+    try:
+        data = request.get_json(force=True)
+        if not data:
+            return jsonify({'error': 'No JSON body received'}), 400
 
-    count        = predict_count(year, state, district, crime_type)
-    label, color = risk_label(count)
-    forecast     = forecast_series(state, district, crime_type,
-                                   from_year=max(year, 2014), to_year=2030)
-    summary      = generate_ai_summary(state, district, crime_type, year, count, forecast)
+        year       = int(data.get('year', 2013))
+        state      = str(data.get('state', '')).upper().strip()
+        district   = str(data.get('district', '')).upper().strip()
+        crime_type = str(data.get('crime_type', ''))
 
-    # Historical actuals from dataset
-    hist = df[(df['STATE/UT'] == state) & (df['DISTRICT'] == district)]
-    historical = {}
-    if crime_type in df.columns:
-        for _, row in hist.iterrows():
-            historical[int(row['YEAR'])] = int(row[crime_type])
+        if not state or not district or not crime_type:
+            return jsonify({'error': f'Missing field — state:{state} district:{district} crime:{crime_type}'}), 400
 
-    return jsonify({
-        'count':      count,
-        'label':      label,
-        'color':      color,
-        'summary':    summary,
-        'forecast':   {str(k): v for k, v in forecast.items()},
-        'historical': {str(k): v for k, v in historical.items()},
-    })
+        # Validate state/district exist in encoders
+        if state not in encoders['state'].classes_:
+            return jsonify({'error': f'Unknown state: {state}. Check spelling.'}), 400
+        if district not in encoders['district'].classes_:
+            return jsonify({'error': f'Unknown district: {district}. Check spelling.'}), 400
+        if crime_type not in encoders['crime'].classes_:
+            return jsonify({'error': f'Unknown crime type: {crime_type}'}), 400
+
+        count        = predict_count(year, state, district, crime_type)
+        label, color = risk_label(count)
+        forecast     = forecast_series(state, district, crime_type,
+                                       from_year=max(year, 2014), to_year=2030)
+        summary      = generate_ai_summary(state, district, crime_type, year, count, forecast)
+
+        # Historical actuals from dataset
+        hist = df[(df['STATE/UT'] == state) & (df['DISTRICT'] == district)]
+        historical = {}
+        if crime_type in df.columns:
+            for _, row in hist.iterrows():
+                historical[int(row['YEAR'])] = int(row[crime_type])
+
+        return jsonify({
+            'count':      count,
+            'label':      label,
+            'color':      color,
+            'summary':    summary,
+            'forecast':   {str(k): v for k, v in forecast.items()},
+            'historical': {str(k): v for k, v in historical.items()},
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/predictions')
 def predictions():
