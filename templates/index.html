@@ -92,6 +92,8 @@
 
 </div>
 
+
+{% block scripts %}
 <script>
 const yearTrend  = {{ year_trend|safe }};
 const topCrimes  = {{ top_crimes|safe }};
@@ -199,4 +201,5 @@ async function quickPredict() {
   `;
 }
 </script>
+{% endblock %}
 {% endblock %}
